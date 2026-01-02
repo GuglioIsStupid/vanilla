@@ -8,6 +8,12 @@ add_library(libvanilla STATIC
     vanilla.c
 )
 
+if (NINTENDO_SWITCH)
+    target_compile_definitions(libvanilla PRIVATE
+        -DNINTENDO_SWITCH
+    )
+endif()
+
 target_include_directories(libvanilla PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

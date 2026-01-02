@@ -2,10 +2,20 @@
 #define VANILLA_GAMEPAD_H
 
 #include <pthread.h>
+#ifndef pthread_setname_np
+#define pthread_setname_np(thread, name) ((void)0)
+#endif
 #include <stdint.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
+typedef uint32_t in_addr_t;
+typedef uint16_t in_port_t;
+#elif defined(NINTENDO_SWITCH)
+#include <arpa/inet.h>
+#include <errno.h>
+#include <sys/socket.h>
+#define AF_INET 2
 typedef uint32_t in_addr_t;
 typedef uint16_t in_port_t;
 #else
@@ -57,7 +67,7 @@ typedef struct thread_data_t
 
 typedef union {
     struct sockaddr_in in;
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(NINTENDO_SWITCH)
     struct sockaddr_un un;
 #endif
 } sockaddr_u;

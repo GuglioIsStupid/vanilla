@@ -30,7 +30,7 @@ pthread_mutex_t event_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline int skterr()
 {
-#ifdef _WIN32
+#if defined(_WIN32)
     return WSAGetLastError();
 #else
     return errno;
@@ -39,7 +39,7 @@ static inline int skterr()
 
 void create_sockaddr(sockaddr_u *addr, size_t *size, in_addr_t inaddr, uint16_t port, int local, int delete)
 {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(NINTENDO_SWITCH)
     if (local) {
         memset(&addr->un, 0, sizeof(addr->un));
         addr->un.sun_family = AF_UNIX;
@@ -56,7 +56,7 @@ void create_sockaddr(sockaddr_u *addr, size_t *size, in_addr_t inaddr, uint16_t 
         addr->in.sin_addr.s_addr = inaddr;
 
         if (size) *size = sizeof(struct sockaddr_in);
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(NINTENDO_SWITCH)
     }
 #endif
 }
@@ -136,7 +136,7 @@ int create_socket(int *socket_out, in_port_t port, int pipe)
     // setsockopt(skt, SOL_SOCKET, SO_RCVBUF, &buf_sz, sizeof(buf_sz));
     // setsockopt(skt, SOL_SOCKET, SO_SNDBUF, &buf_sz, sizeof(buf_sz));
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(NINTENDO_SWITCH)
     if (!pipe && SERVER_ADDRESS == VANILLA_ADDRESS_LOCAL) {
         // Bind to wireless device
         setsockopt(skt, SOL_SOCKET, SO_BINDTODEVICE, wireless_interface, strlen(wireless_interface));

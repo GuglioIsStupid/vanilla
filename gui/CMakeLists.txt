@@ -4,6 +4,13 @@ set(_sdl_lib SDL2::SDL2)
 set(_vanilla_gui_libs "")
 set(_ffmpeg_components avformat avcodec avutil swscale)
 
+if (NINTENDO_SWITCH)
+    message(STATUS "Building for Nintendo Switch")
+    add_definitions(-DNINTENDO_SWITCH)
+else()
+    message(STATUS "Not building for Nintendo Switch")
+endif()
+
 function(compile_ffmpeg _target_name _system_name _system_processor)
 	set(FFMPEG_PREFIX_DIR "${CMAKE_CURRENT_BINARY_DIR}/FFmpeg-${_system_name}-${_system_processor}")
     set(FFMPEG_INSTALL_DIR "${FFMPEG_PREFIX_DIR}/install")
@@ -351,6 +358,31 @@ if (APPLE)
 	target_link_libraries(vanilla PRIVATE "-framework VideoToolbox" "-framework CoreMedia" iconv)
 endif()
 
+if (NINTENDO_SWITCH) # For the nintendo switch, link order is VERY strict.
+    target_link_libraries(vanilla PRIVATE
+        libvanilla
+        SDL2::SDL2main
+        SDL2_ttf
+        freetype
+        harfbuzz
+        SDL2_image
+        png
+        jpeg
+        webp
+        z
+        bz2
+        opus
+        swresample
+        avcodec
+        avformat
+        avutil
+        swscale
+        dav1d
+        pthread
+        m
+    )
+endif()
+
 if (VANILLA_BUILD_PIPE)
 	# Assume this platform is capable of running vanilla-pipe
     target_compile_definitions(vanilla PRIVATE VANILLA_PIPE_AVAILABLE)
@@ -392,6 +424,10 @@ endif()
 # Find libxml2 (used for storing/parsing user config)
 if (VANILLA_BUILD_VENDORED)
     target_link_libraries(vanilla PRIVATE LibXml2::LibXml2)
+elseif(NINTENDO_SWITCH)
+    find_package(LibXML2 CONFIG REQUIRED)
+    target_link_libraries(vanilla PRIVATE ${LIBXML2_LIBRARIES})
+    target_include_directories(vanilla PRIVATE ${LIBXML2_INCLUDE_DIRS})
 else()
     find_package(LibXML2 REQUIRED)
     target_link_libraries(vanilla PRIVATE ${LibXML2_LIBRARIES})
@@ -424,6 +460,30 @@ elseif(APPLE)
     add_custom_command(
         TARGET vanilla POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:vanilla>/../Resources/assets"
+    )
+elseif(NINTENDO_SWITCH)
+    set(VANILLA_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")  # where vanilla binary goes
+    set(ROMFS_DIR "${VANILLA_OUT_DIR}/romfs")
+
+    # Ensure romfs directory exists
+    add_custom_command(
+        TARGET vanilla POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ROMFS_DIR}/assets"
+    )
+
+    add_custom_command(
+        TARGET vanilla POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/assets" "${ROMFS_DIR}/assets"
+    )
+
+    add_custom_command(
+        TARGET vanilla POST_BUILD
+        COMMAND ${NX_NACPTOOL_EXE} --create "Vanilla" "mattkc" "1.0.0" "${VANILLA_OUT_DIR}/vanilla.nacp" --titleid=0100ABCD12345C00
+    )
+
+    add_custom_command(
+        TARGET vanilla POST_BUILD
+        COMMAND ${NX_ELF2NRO_EXE} "$<TARGET_FILE:vanilla>" "${VANILLA_OUT_DIR}/vanilla.nro" --nacp="${VANILLA_OUT_DIR}/vanilla.nacp" --romfsdir="${ROMFS_DIR}" --icon="${ROMFS_DIR}/assets/default_icon.jpg" --alignedheader
     )
 else()
     # Put assets in correct place relative to build

@@ -27,6 +27,9 @@
 // macOS has no htobe32
 #include <libkern/OSByteOrder.h>
 #define htobe32(x) OSSwapHostToBigInt32(x)
+#elif defined(NINTENDO_SWITCH)
+#include <switch.h>
+#define htobe32(x) __builtin_bswap32(x)
 #endif // __APPLE__
 
 typedef struct
